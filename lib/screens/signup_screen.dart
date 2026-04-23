@@ -1,9 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 
 class SignupScreen extends StatelessWidget {
-  const SignupScreen({super.key});
+  final bool isDarkMode;
+  final Function(bool) onThemeChanged;
+
+  const SignupScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onThemeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +42,6 @@ class SignupScreen extends StatelessWidget {
               decoration: const InputDecoration(labelText: 'Confirm Password'),
             ),
             const SizedBox(height: 20),
-
             ElevatedButton(
               onPressed: () async {
                 if (passwordController.text != confirmController.text) {
@@ -45,14 +52,30 @@ class SignupScreen extends StatelessWidget {
                 }
 
                 try {
-                  await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                    email: emailController.text.trim(),
-                    password: passwordController.text.trim(),
-                  );
+                  final userCredential = await FirebaseAuth.instance
+                      .createUserWithEmailAndPassword(
+                        email: emailController.text.trim(),
+                        password: passwordController.text.trim(),
+                      );
 
-                  Navigator.push(
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(userCredential.user!.uid)
+                      .set({
+                        'email': emailController.text.trim(),
+                        'displayName': '',
+                        'darkMode': isDarkMode,
+                        'createdAt': Timestamp.now(),
+                      });
+
+                  Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => HomeScreen(
+                        isDarkMode: isDarkMode,
+                        onThemeChanged: onThemeChanged,
+                      ),
+                    ),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(
@@ -62,7 +85,6 @@ class SignupScreen extends StatelessWidget {
               },
               child: const Text('Sign Up'),
             ),
-
             TextButton(
               onPressed: () {
                 Navigator.pop(context);

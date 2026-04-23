@@ -68,6 +68,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         'createdAt': Timestamp.now(),
       });
 
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Workout saved successfully')),
       );
@@ -79,10 +81,14 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       durationController.clear();
       notesController.clear();
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to save workout: $e')));
     }
+
+    if (!mounted) return;
 
     setState(() {
       isLoading = false;
@@ -92,53 +98,115 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          TextField(
-            controller: workoutTitleController,
-            decoration: const InputDecoration(labelText: 'Workout Title'),
+      padding: const EdgeInsets.all(20),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Log Workout',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Track your session and keep your progress moving.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 22),
+              TextField(
+                controller: workoutTitleController,
+                decoration: const InputDecoration(
+                  labelText: 'Workout Title',
+                  prefixIcon: Icon(Icons.title),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: exerciseNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Exercise Name',
+                  prefixIcon: Icon(Icons.fitness_center),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: setsController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Sets',
+                        prefixIcon: Icon(Icons.format_list_numbered),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: repsController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Reps',
+                        prefixIcon: Icon(Icons.repeat),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: durationController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Duration (minutes)',
+                  prefixIcon: Icon(Icons.timer_outlined),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: notesController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Notes',
+                  alignLabelWithHint: true,
+                  prefixIcon: Icon(Icons.notes),
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: isLoading ? null : submitWorkout,
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Submit Workout',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: exerciseNameController,
-            decoration: const InputDecoration(labelText: 'Exercise Name'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: setsController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Sets'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: repsController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Reps'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: durationController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Duration (minutes)'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: notesController,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Notes'),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : submitWorkout,
-              child: isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Submit Workout'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
