@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +32,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     motivationQuote = quotes[Random().nextInt(quotes.length)];
+  }
+
+  int calculateStreak(List<QueryDocumentSnapshot> workoutDocs) {
+    final dates = <DateTime>{};
+
+    for (var doc in workoutDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final timestamp = data['createdAt'] as Timestamp?;
+      if (timestamp != null) {
+        final date = timestamp.toDate();
+        dates.add(DateTime(date.year, date.month, date.day));
+      }
+    }
+
+    if (dates.isEmpty) return 0;
+
+    int streak = 0;
+    DateTime currentDay = DateTime.now();
+    currentDay = DateTime(currentDay.year, currentDay.month, currentDay.day);
+
+    for (int i = 0; i < 365; i++) {
+      if (dates.contains(currentDay)) {
+        streak++;
+        currentDay = currentDay.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   @override
@@ -69,6 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             final docs = snapshot.data?.docs ?? [];
             final totalWorkouts = docs.length;
+            final streak = calculateStreak(docs);
 
             final now = DateTime.now();
             final weekAgo = now.subtract(const Duration(days: 7));
@@ -99,13 +132,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE11D2E),
-                      borderRadius: BorderRadius.circular(26),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE11D2E), Color(0xFF7F1D1D)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFFE11D2E).withOpacity(0.25),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                          blurRadius: 22,
+                          offset: const Offset(0, 12),
                         ),
                       ],
                     ),
@@ -137,7 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: PersonaStatCard(
+                        child: GlassStatCard(
                           title: 'THIS WEEK',
                           value: workoutsThisWeek.toString(),
                           icon: Icons.calendar_today,
@@ -145,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: PersonaStatCard(
+                        child: GlassStatCard(
                           title: 'TOTAL WORKOUTS',
                           value: totalWorkouts.toString(),
                           icon: Icons.fitness_center,
@@ -154,9 +191,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  const PersonaWideCard(
+                  GlassWideCard(
                     title: 'CURRENT STREAK',
-                    value: 'SEE PROGRESS TAB',
+                    value: '$streak day${streak == 1 ? '' : 's'}',
                     icon: Icons.local_fire_department,
                   ),
                   const SizedBox(height: 24),
@@ -165,14 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF141414),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0x22FFFFFF)),
-                    ),
+                  GlassPanel(
                     child: Row(
                       children: [
                         Container(
@@ -210,12 +240,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class PersonaStatCard extends StatelessWidget {
+class GlassPanel extends StatelessWidget {
+  final Widget child;
+
+  const GlassPanel({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withOpacity(0.06)
+                : Colors.white.withOpacity(0.72),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withOpacity(0.10)
+                  : Colors.black.withOpacity(0.06),
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class GlassStatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
 
-  const PersonaStatCard({
+  const GlassStatCard({
     super.key,
     required this.title,
     required this.value,
@@ -224,13 +288,7 @@ class PersonaStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF121212),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0x22FFFFFF)),
-      ),
+    return GlassPanel(
       child: Column(
         children: [
           Icon(icon, color: const Color(0xFFE11D2E), size: 28),
@@ -244,7 +302,6 @@ class PersonaStatCard extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Colors.white70,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
             ),
@@ -255,12 +312,12 @@ class PersonaStatCard extends StatelessWidget {
   }
 }
 
-class PersonaWideCard extends StatelessWidget {
+class GlassWideCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
 
-  const PersonaWideCard({
+  const GlassWideCard({
     super.key,
     required this.title,
     required this.value,
@@ -269,13 +326,7 @@ class PersonaWideCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF121212),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0x22FFFFFF)),
-      ),
+    return GlassPanel(
       child: Row(
         children: [
           Container(
@@ -303,7 +354,6 @@ class PersonaWideCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Colors.white70,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
                   ),

@@ -19,6 +19,21 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
 
   bool isLoading = false;
 
+  final List<String> categories = [
+    '     ',
+    'Chest',
+    'Back',
+    'Legs',
+    'Arms',
+    'Shoulders',
+    'Cardio',
+    'Full Body',
+    'Core',
+    'Rest / Recovery',
+  ];
+
+  String selectedCategory = 'Chest';
+
   @override
   void dispose() {
     workoutTitleController.dispose();
@@ -61,6 +76,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         'userEmail': user.email,
         'workoutTitle': workoutTitleController.text.trim(),
         'exerciseName': exerciseNameController.text.trim(),
+        'category': selectedCategory,
         'sets': int.tryParse(setsController.text.trim()) ?? 0,
         'reps': int.tryParse(repsController.text.trim()) ?? 0,
         'duration': int.tryParse(durationController.text.trim()) ?? 0,
@@ -80,6 +96,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       repsController.clear();
       durationController.clear();
       notesController.clear();
+
+      setState(() {
+        selectedCategory = 'Chest';
+      });
     } catch (e) {
       if (!mounted) return;
 
@@ -116,6 +136,29 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 22),
+
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Workout Category',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    selectedCategory = value;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 14),
+
               TextField(
                 controller: workoutTitleController,
                 decoration: const InputDecoration(
@@ -124,6 +167,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 ),
               ),
               const SizedBox(height: 14),
+
               TextField(
                 controller: exerciseNameController,
                 decoration: const InputDecoration(
@@ -132,6 +176,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 ),
               ),
               const SizedBox(height: 14),
+
               Row(
                 children: [
                   Expanded(
@@ -157,7 +202,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 14),
+
               TextField(
                 controller: durationController,
                 keyboardType: TextInputType.number,
@@ -167,6 +214,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 ),
               ),
               const SizedBox(height: 14),
+
               TextField(
                 controller: notesController,
                 maxLines: 4,
@@ -177,12 +225,13 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 ),
               ),
               const SizedBox(height: 22),
+
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
+                    backgroundColor: const Color(0xFFE11D2E),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -200,7 +249,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         )
                       : const Text(
                           'Submit Workout',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                 ),
               ),

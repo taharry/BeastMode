@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -18,9 +17,31 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final TextEditingController nameController = TextEditingController();
-  bool notificationsEnabled = true;
-  bool isLoading = false;
+  final TextEditingController displayNameController = TextEditingController();
+
+  int selectedAvatar = 0;
+
+  final List<IconData> avatars = [
+    Icons.fitness_center,
+    Icons.local_fire_department,
+    Icons.flash_on,
+    Icons.sports_gymnastics,
+    Icons.sports_kabaddi,
+    Icons.directions_run,
+    Icons.self_improvement,
+    Icons.whatshot,
+  ];
+
+  final List<Color> avatarColors = [
+    Color(0xFFE11D2E),
+    Colors.orange,
+    Colors.yellow,
+    Colors.green,
+    Colors.blue,
+    Colors.purple,
+    Colors.teal,
+    Colors.pink,
+  ];
 
   @override
   void initState() {
@@ -28,92 +49,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     loadUserData();
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    super.dispose();
-  }
-
   Future<void> loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
-      if (doc.exists) {
-        final data = doc.data();
-        if (data != null && mounted) {
-          setState(() {
-            nameController.text = data['displayName'] ?? '';
-            notificationsEnabled = data['notificationsEnabled'] ?? true;
-          });
-        }
-      }
-    } catch (_) {}
+    if (doc.exists) {
+      final data = doc.data()!;
+      displayNameController.text = data['displayName'] ?? '';
+      selectedAvatar = data['avatarIndex'] ?? 0;
+      setState(() {});
+    }
   }
 
   Future<void> saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    setState(() {
-      isLoading = true;
-    });
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'displayName': displayNameController.text.trim(),
+      'avatarIndex': selectedAvatar,
+    }, SetOptions(merge: true));
 
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'email': user.email,
-        'displayName': nameController.text.trim(),
-        'notificationsEnabled': notificationsEnabled,
-      }, SetOptions(merge: true));
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color(0xFFE11D2E),
-          content: Text('Profile updated'),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: const Color(0xFFE11D2E),
-          content: Text('Failed to save profile: $e'),
-        ),
-      );
-    }
-
-    if (!mounted) return;
-    setState(() {
-      isLoading = false;
-    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile updated')));
   }
 
-  Future<void> logout() async {
-    await FirebaseAuth.instance.signOut();
+  Widget buildAvatar(int index) {
+    final isSelected = selectedAvatar == index;
 
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LoginScreen(
-          isDarkMode: Theme.of(context).brightness == Brightness.dark,
-          onThemeChanged: widget.onThemeChanged,
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedAvatar = index;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.all(6),
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: avatarColors[index].withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? avatarColors[index] : Colors.transparent,
+            width: 2,
+          ),
         ),
+        child: Icon(avatars[index], color: avatarColors[index], size: 28),
       ),
-      (route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
@@ -121,144 +117,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF121212),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: const Color(0x22FFFFFF)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE11D2E),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    size: 42,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Profile',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'EMAIL',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(user?.email ?? 'No email'),
-                const SizedBox(height: 20),
-                Text(
-                  'DISPLAY NAME',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter display name',
-                    prefixIcon: Icon(Icons.badge_outlined),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : saveProfile,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'SAVE PROFILE',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                  ),
-                ),
-              ],
+          const Text(
+            'Profile',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 20),
+
+          // Avatar display
+          Center(
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: avatarColors[selectedAvatar].withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                avatars[selectedAvatar],
+                size: 40,
+                color: avatarColors[selectedAvatar],
+              ),
             ),
           ),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF121212),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0x22FFFFFF)),
-            ),
-            child: Column(
-              children: [
-                SwitchListTile(
-                  value: notificationsEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      notificationsEnabled = value;
-                    });
-                  },
-                  activeColor: const Color(0xFFE11D2E),
-                  title: const Text(
-                    'Notifications',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                SwitchListTile(
-                  value: isDark,
-                  onChanged: (value) {
-                    widget.onThemeChanged(value);
-                  },
-                  activeColor: const Color(0xFFE11D2E),
-                  title: const Text(
-                    'Dark Mode',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
+
+          const SizedBox(height: 20),
+
+          const Text(
+            'Choose Avatar',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+
+          Wrap(
+            children: List.generate(
+              avatars.length,
+              (index) => buildAvatar(index),
             ),
           ),
-          const SizedBox(height: 18),
+
+          const SizedBox(height: 20),
+
+          const Text('Email'),
+          const SizedBox(height: 6),
+          Text(user?.email ?? ''),
+
+          const SizedBox(height: 16),
+
+          const Text('Display Name'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: displayNameController,
+            decoration: const InputDecoration(hintText: 'Enter display name'),
+          ),
+
+          const SizedBox(height: 20),
+
           SizedBox(
             width: double.infinity,
-            height: 54,
+            height: 50,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFB91C1C),
+                backgroundColor: const Color(0xFFE11D2E),
               ),
-              onPressed: logout,
-              child: const Text(
-                'LOGOUT',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                ),
-              ),
+              onPressed: saveProfile,
+              child: const Text('Save Profile'),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            value: isDark,
+            onChanged: (value) {
+              widget.onThemeChanged(value);
+
+              setState(() {});
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton(
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                if (!mounted) return;
+                Navigator.pop(context);
+              },
+              child: const Text('Logout'),
             ),
           ),
         ],
