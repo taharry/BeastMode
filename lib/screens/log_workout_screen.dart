@@ -20,7 +20,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   bool isLoading = false;
 
   final List<String> categories = [
-    '     ',
     'Chest',
     'Back',
     'Legs',

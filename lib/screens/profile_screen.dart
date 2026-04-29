@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -205,7 +206,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
                 if (!mounted) return;
-                Navigator.pop(context);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LoginScreen(
+                      isDarkMode: widget.isDarkMode,
+                      onThemeChanged: widget.onThemeChanged,
+                    ),
+                  ),
+                  (route) => false,
+                );
               },
               child: const Text('Logout'),
             ),
