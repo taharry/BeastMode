@@ -258,6 +258,7 @@ class ProgressScreen extends StatelessWidget {
                     child: ProgressGlassCard(
                       title: 'TOTAL WORKOUTS',
                       value: totalWorkouts.toString(),
+                      icon: Icons.fitness_center,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -265,6 +266,7 @@ class ProgressScreen extends StatelessWidget {
                     child: ProgressGlassCard(
                       title: 'TOTAL MINUTES',
                       value: totalDuration.toString(),
+                      icon: Icons.timer_outlined,
                     ),
                   ),
                 ],
@@ -273,6 +275,7 @@ class ProgressScreen extends StatelessWidget {
               ProgressGlassCard(
                 title: 'CURRENT STREAK',
                 value: '$streak day${streak == 1 ? '' : 's'}',
+                icon: Icons.local_fire_department,
                 fullWidth: true,
               ),
               const SizedBox(height: 24),
@@ -323,12 +326,14 @@ class ProgressScreen extends StatelessWidget {
 class ProgressGlassCard extends StatelessWidget {
   final String title;
   final String value;
+  final IconData icon;
   final bool fullWidth;
 
   const ProgressGlassCard({
     super.key,
     required this.title,
     required this.value,
+    required this.icon,
     this.fullWidth = false,
   });
 
@@ -337,6 +342,8 @@ class ProgressGlassCard extends StatelessWidget {
     return GlassContainer(
       child: Column(
         children: [
+          Icon(icon, color: const Color(0xFFE11D2E), size: 28),
+          const SizedBox(height: 10),
           Text(
             value,
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
