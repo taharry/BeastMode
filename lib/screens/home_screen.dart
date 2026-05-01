@@ -54,8 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.deepOrange,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white54
+            : Colors.black54,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
