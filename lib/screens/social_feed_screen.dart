@@ -41,22 +41,36 @@ class SocialFeedScreen extends StatelessWidget {
     return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
   }
 
-  Future<Map<String, dynamic>> getUserData(String userId) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .get();
+  Future<Map<String, Map<String, dynamic>>> batchGetUserData(
+    Set<String> userIds,
+  ) async {
+    final results = <String, Map<String, dynamic>>{};
+    final defaultData = {'displayName': 'Beast User', 'avatarIndex': 0};
 
-    if (!doc.exists) {
-      return {'displayName': 'Beast User', 'avatarIndex': 0};
+    final ids = userIds.where((id) => id.isNotEmpty).toList();
+    if (ids.isEmpty) return results;
+
+    for (var i = 0; i < ids.length; i += 10) {
+      final batch = ids.sublist(i, i + 10 > ids.length ? ids.length : i + 10);
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: batch)
+          .get();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        results[doc.id] = {
+          'displayName': data['displayName'] ?? 'Beast User',
+          'avatarIndex': data['avatarIndex'] ?? 0,
+        };
+      }
     }
 
-    final data = doc.data() ?? {};
+    for (var id in ids) {
+      results.putIfAbsent(id, () => defaultData);
+    }
 
-    return {
-      'displayName': data['displayName'] ?? 'Beast User',
-      'avatarIndex': data['avatarIndex'] ?? 0,
-    };
+    return results;
   }
 
   void showWorkoutDetails(
@@ -247,39 +261,47 @@ class SocialFeedScreen extends StatelessWidget {
           return const Center(child: Text('No workouts posted yet'));
         }
 
-        return ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            const Text(
-              'Community Feed',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Tap a post to see workout details.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
+        final userIds = <String>{};
+        for (var doc in workoutDocs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final userId = data['userId'] as String? ?? '';
+          if (userId.isNotEmpty) userIds.add(userId);
+        }
 
-            ...workoutDocs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
+        return FutureBuilder<Map<String, Map<String, dynamic>>>(
+          future: batchGetUserData(userIds),
+          builder: (context, usersSnapshot) {
+            final usersMap = usersSnapshot.data ?? {};
 
-              final userId = data['userId'] ?? '';
-              final workoutTitle = data['workoutTitle'] ?? 'Workout';
-              final exerciseName = data['exerciseName'] ?? 'Exercise';
-              final category = data['category'] ?? 'Uncategorized';
-              final sets = data['sets'] ?? 0;
-              final reps = data['reps'] ?? 0;
-              final duration = data['duration'] ?? 0;
-              final notes = data['notes'] ?? '';
-              final createdAt = data['createdAt'] as Timestamp?;
-              final timeText = formatTime(createdAt);
+            return ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                const Text(
+                  'Community Feed',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Tap a post to see workout details.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
 
-              return FutureBuilder<Map<String, dynamic>>(
-                future: getUserData(userId),
-                builder: (context, userSnapshot) {
-                  final userData =
-                      userSnapshot.data ??
+                ...workoutDocs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+
+                  final userId = data['userId'] ?? '';
+                  final workoutTitle = data['workoutTitle'] ?? 'Workout';
+                  final exerciseName = data['exerciseName'] ?? 'Exercise';
+                  final category = data['category'] ?? 'Uncategorized';
+                  final sets = data['sets'] ?? 0;
+                  final reps = data['reps'] ?? 0;
+                  final duration = data['duration'] ?? 0;
+                  final notes = data['notes'] ?? '';
+                  final createdAt = data['createdAt'] as Timestamp?;
+                  final timeText = formatTime(createdAt);
+
+                  final userData = usersMap[userId] ??
                       {'displayName': 'Beast User', 'avatarIndex': 0};
 
                   final displayName =
@@ -287,7 +309,7 @@ class SocialFeedScreen extends StatelessWidget {
                       ? userData['displayName']
                       : 'Beast User';
 
-                  int avatarIndex = userData['avatarIndex'] ?? 0;
+                  int avatarIndex = (userData['avatarIndex'] ?? 0) as int;
                   if (avatarIndex < 0 || avatarIndex >= avatars.length) {
                     avatarIndex = 0;
                   }
@@ -315,10 +337,10 @@ class SocialFeedScreen extends StatelessWidget {
                       );
                     },
                   );
-                },
-              );
-            }),
-          ],
+                }),
+              ],
+            );
+          },
         );
       },
     );
