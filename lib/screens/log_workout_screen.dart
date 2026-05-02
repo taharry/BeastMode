@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../services/notification_service.dart';
 
 class LogWorkoutScreen extends StatefulWidget {
   const LogWorkoutScreen({super.key});
@@ -82,6 +83,20 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         'notes': notesController.text.trim(),
         'createdAt': Timestamp.now(),
       });
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final displayName =
+          (userDoc.data()?['displayName'] as String?)?.trim() ?? 'Beast User';
+
+      await NotificationService.sendWorkoutNotification(
+        userId: user.uid,
+        displayName: displayName.isNotEmpty ? displayName : 'Beast User',
+        workoutTitle: workoutTitleController.text.trim(),
+        category: selectedCategory,
+      );
 
       if (!mounted) return;
 

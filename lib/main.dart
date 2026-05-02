@@ -5,10 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService.initialize();
   runApp(const BeastModeApp());
 }
 
@@ -181,6 +183,8 @@ class _BeastModeAppState extends State<BeastModeApp> {
     return MaterialApp(
       title: 'Beast Mode',
       debugShowCheckedModeBanner: false,
+      navigatorKey: NotificationService.navigatorKey,
+      scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       darkTheme: darkTheme,
       theme: lightTheme,
