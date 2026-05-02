@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 @pragma('vm:entry-point')
@@ -10,23 +11,27 @@ class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   static Future<void> initialize() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional) {
-      final token = await _messaging.getToken();
-      await _saveToken(token);
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        final token = await _messaging.getToken();
+        await _saveToken(token);
 
-      _messaging.onTokenRefresh.listen(_saveToken);
+        _messaging.onTokenRefresh.listen(_saveToken);
+      }
+
+      FirebaseMessaging.onMessage.listen(handleForegroundMessage);
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('FCM initialization error: $e');
     }
-
-    FirebaseMessaging.onMessage.listen(handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   }
 
   static Future<void> _saveToken(String? token) async {
