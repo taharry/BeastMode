@@ -62,6 +62,7 @@ class SocialFeedScreen extends StatelessWidget {
         results[doc.id] = {
           'displayName': data['displayName'] ?? 'Beast User',
           'avatarIndex': data['avatarIndex'] ?? 0,
+          'profilePhotoUrl': data['profilePhotoUrl'],
         };
       }
     }
@@ -314,10 +315,14 @@ class SocialFeedScreen extends StatelessWidget {
                     avatarIndex = 0;
                   }
 
+                  final profilePhotoUrl =
+                      userData['profilePhotoUrl'] as String?;
+
                   return FeedActivityCard(
                     displayName: displayName,
                     avatarIcon: avatars[avatarIndex],
                     avatarColor: avatarColors[avatarIndex],
+                    profilePhotoUrl: profilePhotoUrl,
                     category: category,
                     timeText: timeText,
                     onTap: () {
@@ -351,6 +356,7 @@ class FeedActivityCard extends StatelessWidget {
   final String displayName;
   final IconData avatarIcon;
   final Color avatarColor;
+  final String? profilePhotoUrl;
   final String category;
   final String timeText;
   final VoidCallback onTap;
@@ -360,6 +366,7 @@ class FeedActivityCard extends StatelessWidget {
     required this.displayName,
     required this.avatarIcon,
     required this.avatarColor,
+    this.profilePhotoUrl,
     required this.category,
     required this.timeText,
     required this.onTap,
@@ -391,15 +398,20 @@ class FeedActivityCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: avatarColor.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(avatarIcon, color: avatarColor, size: 28),
-                    ),
+                    profilePhotoUrl != null && profilePhotoUrl!.isNotEmpty
+                        ? CircleAvatar(
+                            radius: 26,
+                            backgroundImage: NetworkImage(profilePhotoUrl!),
+                          )
+                        : Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: avatarColor.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(avatarIcon, color: avatarColor, size: 28),
+                          ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(

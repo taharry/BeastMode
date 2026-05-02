@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -21,6 +26,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController displayNameController = TextEditingController();
 
   int selectedAvatar = 0;
+  String? profilePhotoUrl;
+  bool isUploading = false;
 
   final List<IconData> avatars = [
     Icons.fitness_center,
@@ -63,8 +70,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final data = doc.data()!;
       displayNameController.text = data['displayName'] ?? '';
       selectedAvatar = data['avatarIndex'] ?? 0;
+      profilePhotoUrl = data['profilePhotoUrl'];
       setState(() {});
     }
+  }
+
+  Future<void> uploadProfilePhoto() async {
+    if (kIsWeb) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (image == null) return;
+
+    setState(() => isUploading = true);
+
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos/${user.uid}.jpg');
+
+      await ref.putFile(File(image.path));
+      final url = await ref.getDownloadURL();
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'profilePhotoUrl': url,
+      }, SetOptions(merge: true));
+
+      setState(() {
+        profilePhotoUrl = url;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() => isUploading = false);
   }
 
   Future<void> saveProfile() async {
@@ -131,6 +187,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildProfileAvatar() {
+    if (profilePhotoUrl != null && profilePhotoUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 50,
+        backgroundImage: NetworkImage(profilePhotoUrl!),
+      );
+    }
+
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        color: avatarColors[selectedAvatar].withOpacity(0.2),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: avatarColors[selectedAvatar].withOpacity(0.5),
+          width: 3,
+        ),
+      ),
+      child: Icon(
+        avatars[selectedAvatar],
+        size: 44,
+        color: avatarColors[selectedAvatar],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -144,21 +227,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: avatarColors[selectedAvatar].withOpacity(0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: avatarColors[selectedAvatar].withOpacity(0.5),
-                      width: 3,
-                    ),
-                  ),
-                  child: Icon(
-                    avatars[selectedAvatar],
-                    size: 44,
-                    color: avatarColors[selectedAvatar],
+                GestureDetector(
+                  onTap: uploadProfilePhoto,
+                  child: Stack(
+                    children: [
+                      _buildProfileAvatar(),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE11D2E),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF080808)
+                                  : const Color(0xFFF6F2F2),
+                              width: 2,
+                            ),
+                          ),
+                          child: isUploading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(6),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
