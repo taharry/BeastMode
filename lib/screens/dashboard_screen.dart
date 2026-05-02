@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../utils/streak.dart';
+import '../services/workout_feedback.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -201,12 +202,149 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  _WorkoutFeedbackSection(
+                    userId: user.uid,
+                    workouts: docs.map((d) =>
+                        d.data() as Map<String, dynamic>).toList(),
+                  ),
                 ],
               ),
             );
           },
         );
       },
+    );
+  }
+}
+
+class _WorkoutFeedbackSection extends StatefulWidget {
+  final String userId;
+  final List<Map<String, dynamic>> workouts;
+
+  const _WorkoutFeedbackSection({
+    required this.userId,
+    required this.workouts,
+  });
+
+  @override
+  State<_WorkoutFeedbackSection> createState() =>
+      _WorkoutFeedbackSectionState();
+}
+
+class _WorkoutFeedbackSectionState extends State<_WorkoutFeedbackSection> {
+  List<FeedbackAlert> _alerts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeedback();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WorkoutFeedbackSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.workouts.length != widget.workouts.length) {
+      _loadFeedback();
+    }
+  }
+
+  Future<void> _loadFeedback() async {
+    final goals = await WorkoutFeedbackService.getGoals(widget.userId);
+    final alerts = WorkoutFeedbackService.analyze(
+      recentWorkouts: widget.workouts,
+      goals: goals,
+    );
+    if (!mounted) return;
+    setState(() => _alerts = alerts);
+  }
+
+  IconData _iconForType(FeedbackType type) {
+    switch (type) {
+      case FeedbackType.safety:
+        return Icons.warning_amber_rounded;
+      case FeedbackType.formReminder:
+        return Icons.info_outline;
+      case FeedbackType.encouragement:
+        return Icons.emoji_events;
+      case FeedbackType.goal:
+        return Icons.track_changes;
+    }
+  }
+
+  Color _colorForType(FeedbackType type) {
+    switch (type) {
+      case FeedbackType.safety:
+        return Colors.orange;
+      case FeedbackType.formReminder:
+        return Colors.blue;
+      case FeedbackType.encouragement:
+        return Colors.green;
+      case FeedbackType.goal:
+        return const Color(0xFFE11D2E);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_alerts.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Workout Feedback',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 12),
+        ..._alerts.map((alert) {
+          final color = _colorForType(alert.type);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GlassPanel(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _iconForType(alert.type),
+                      color: color,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          alert.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          alert.message,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../utils/streak.dart';
+import '../services/workout_feedback.dart';
 
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
@@ -279,6 +280,8 @@ class ProgressScreen extends StatelessWidget {
                 fullWidth: true,
               ),
               const SizedBox(height: 24),
+              _GoalsSection(userId: user.uid),
+              const SizedBox(height: 24),
               const Text(
                 'Recent Workouts',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
@@ -511,6 +514,242 @@ class GlassContainer extends StatelessWidget {
           ),
           child: child,
         ),
+      ),
+    );
+  }
+}
+
+class _GoalsSection extends StatefulWidget {
+  final String userId;
+  const _GoalsSection({required this.userId});
+
+  @override
+  State<_GoalsSection> createState() => _GoalsSectionState();
+}
+
+class _GoalsSectionState extends State<_GoalsSection> {
+  WorkoutGoals? _goals;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGoals();
+  }
+
+  Future<void> _loadGoals() async {
+    final goals = await WorkoutFeedbackService.getGoals(widget.userId);
+    if (!mounted) return;
+    setState(() => _goals = goals);
+  }
+
+  void _showGoalsDialog() {
+    final goals = _goals ?? const WorkoutGoals();
+    final weeklyCtrl =
+        TextEditingController(text: goals.weeklyWorkoutTarget.toString());
+    final durationCtrl =
+        TextEditingController(text: goals.targetDurationPerSession.toString());
+    final repsCtrl =
+        TextEditingController(text: goals.maxRepsThreshold.toString());
+    final setsCtrl =
+        TextEditingController(text: goals.maxSetsThreshold.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Workout Goals'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: weeklyCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Weekly Workout Target',
+                  prefixIcon: Icon(Icons.calendar_today),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: durationCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Target Duration (min)',
+                  prefixIcon: Icon(Icons.timer_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: repsCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Max Reps Threshold',
+                  prefixIcon: Icon(Icons.repeat),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: setsCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Max Sets Threshold',
+                  prefixIcon: Icon(Icons.format_list_numbered),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newGoals = WorkoutGoals(
+                weeklyWorkoutTarget: int.tryParse(weeklyCtrl.text) ?? 5,
+                targetDurationPerSession:
+                    int.tryParse(durationCtrl.text) ?? 45,
+                maxRepsThreshold: int.tryParse(repsCtrl.text) ?? 20,
+                maxSetsThreshold: int.tryParse(setsCtrl.text) ?? 6,
+              );
+
+              await WorkoutFeedbackService.saveGoals(
+                widget.userId,
+                newGoals,
+              );
+
+              if (!context.mounted) return;
+              Navigator.pop(context);
+
+              setState(() => _goals = newGoals);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Goals updated')),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final goals = _goals;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF151515) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.black.withOpacity(0.06),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE11D2E).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.track_changes,
+                  color: Color(0xFFE11D2E),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'WORKOUT GOALS',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    color: Color(0xFFE11D2E),
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _showGoalsDialog,
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Edit'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFE11D2E),
+                ),
+              ),
+            ],
+          ),
+          if (goals != null) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _GoalChip(
+                  label: '${goals.weeklyWorkoutTarget}/week',
+                  icon: Icons.calendar_today,
+                ),
+                _GoalChip(
+                  label: '${goals.targetDurationPerSession} min',
+                  icon: Icons.timer_outlined,
+                ),
+                _GoalChip(
+                  label: '${goals.maxRepsThreshold} max reps',
+                  icon: Icons.repeat,
+                ),
+                _GoalChip(
+                  label: '${goals.maxSetsThreshold} max sets',
+                  icon: Icons.format_list_numbered,
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _GoalChip({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE11D2E).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFFE11D2E)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFE11D2E),
+            ),
+          ),
+        ],
       ),
     );
   }
